@@ -1,45 +1,56 @@
 import discord
 from discord.ext import commands
 
-class Help:
+class Help(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(name='help', aliases=['h'])
-    async def _help(self, ctx, *, command = None):
+    async def _help(self, ctx, *, command: str=None):
+        """Get help on a specified cog or command.
+        Don't put any arguments to get a list of available commands."""
         pref = '```\n'
-        postf = f'\nGet info on a command group, category or just a command with @{self.bot.user.name}#{self.bot.user.discriminator} help <Category>/<Command>/<Command group> or *help <Category>/<Command>/<Command group>```'
+        postf = f'Get info on a command group, category or just a command with @{self.bot.user.name}#{self.bot.user.discriminator} help <Category>/<Command>/<Command group> or *help <Category>/<Command>/<Command group>'
         result = ''
         postfix = '\n```'
-        if command is None:
-            li = [cog[0] for cog in self.bot.cogs.items()]
+        paginator = commands.Paginator()
+        if not command:
+            li = [cog for cog in self.bot.cogs]
             for smth in li:
-                if smth != 'Help' and smth != 'OwnerCog':
-                    s = list(self.bot.get_cog_commands(smth))
-                    result += "{}:\n{}".format(s[0].cog_name, '    '.join('\n    {} - {}\n'.format(c.name, c.help) for c in s))
-            await ctx.send("{}{}{}".format(pref, result, postf))
+                if smth != 'Help':
+                    s = list(self.bot.cogs[smth].get_commands())
+                    if s:
+                        paginator.add_line(f"{s[0].cog_name}:")
+                        for c in s:
+                            if not c.hidden:
+                                paginator.add_line(f'    {c.name} - {c.short_doc}')
+            paginator.add_line(postf)
+            for page in paginator.pages:
+                await ctx.send(page)
         else:
             if command not in self.bot.all_commands:
                 if command not in self.bot.cogs:
-                    cmd = self.bot.get_command(command)
+                    cmd = self.bot.get_command(command.replace('*', '').replace(self.bot.user.mention, ''))
                     if cmd:
-                        result += "{}\n\n    {}".format(cmd.signature, cmd.help)
-                        await ctx.send("{}{}{}".format(pref, result, postfix))
+                        paginator.add_line(f"{ctx.prefix.replace(self.bot.user.mention, f'@{self.bot.user.name}#{self.bot.user.discriminator} ')}{cmd.signature}\n\n    {cmd.help}")
+                        for page in paginator.pages:
+                            await ctx.send(page)
                     else:
                         result = 'That command/category/command group does not exist!'
                         await ctx.send(result)
                 else:
-                    the_cog = list(self.bot.get_cog_commands(command))
-                    result += "{}:\n".format(the_cog[0].cog_name)
+                    the_cog = list(command.get_commands())
+                    paginator.add_line(f"{the_cog[0].cog_name}:") 
                     for cmd in the_cog:
-                        result += ''.join('\n    {} - {}\n'.format(cmd.name, cmd.help))
-                    await ctx.send("{}{}{}".format(pref, result, postfix))
+                        if not cmd.hidden:
+                            paginator.add_line(f'    {cmd.name} - {cmd.help}')
+                    paginator.add_line(postf)
+                    for page in paginator.pages:
+                        await ctx.send(page)
             else:
-                cmd = self.bot.get_command(command)
-                # helptext = ' '.join('[{}]'.format(cmd) for (cmd, param) in dict(cmd.clean_params).items())
-                # result += '' + cmd.name + ' ' + helptext + '\n\n    ' + cmd.help + '\n'
-                result += "{}\n\n    {}".format(cmd.signature, cmd.help)
-                await ctx.send("{}{}{}".format(pref, result, postfix))
+                cmd = self.bot.get_command(command.replace('*', '').replace(self.bot.user.mention, ''))
+                result += f"{ctx.prefix.replace(self.bot.user.mention, f'@{self.bot.user.name}#{self.bot.user.discriminator} ')}{cmd.signature}\n\nCog: {cmd.cog_name}\n\n    {cmd.help}"
+                await ctx.send(pref + result + postfix)
 
 def setup(bot):
     bot.add_cog(Help(bot))
