@@ -50,7 +50,7 @@ class Help(commands.Cog):
             else:
                 cmd = self.bot.get_command(command.replace('*', '').replace(self.bot.user.mention, ''))
                 result += f"{ctx.prefix.replace(self.bot.user.mention, f'@{self.bot.user.name}#{self.bot.user.discriminator} ')}{cmd.signature}\n\nCog: {cmd.cog_name}\n\n    {cmd.help}"
-                await ctx.send(pref + result + postfix)
+                await ctx.send(f"{pref}{result}{postfix}")
 
 def setup(bot):
     bot.add_cog(Help(bot))
